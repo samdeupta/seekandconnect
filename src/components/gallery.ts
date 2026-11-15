@@ -1,0 +1,29 @@
+import { esc, slugify } from '../util';
+import { imgTag } from '../images';
+import { splitByHeading } from '../markdown';
+import { top } from './common';
+import type { ComponentContext, ComponentData } from '../types';
+
+export function gallery(d: ComponentData, content: string, ctx: ComponentContext): string {
+  const { intro, blocks } = splitByHeading(content);
+  const groups = blocks.length ? blocks : [{ title: '', body: intro }];
+  const h = ctx.page ? 'h2' : 'h3';
+  const html = groups
+    .map((g) => {
+      const imgs = [...g.body.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)]
+        .map((match: RegExpMatchArray) => {
+          const alt = match[1] || g.title;
+          const tag = imgTag(match[2], alt);
+          const href = /^https?:\/\//.test(match[2]) ? match[2] : `/imgs/${match[2].replace(/^\/?imgs\//, '')}`;
+          return tag
+            ? `<a href="${esc(href)}" data-viewer="image" data-group="${esc(g.title)}" data-alt="${esc(alt)}">${tag}</a>`
+            : '';
+        })
+        .join('');
+      const id = g.title ? ` id="${slugify(g.title)}"` : '';
+      const title = g.title ? `<${h}>${esc(g.title)}</${h}>` : '';
+      return `<section class="gallery-group reveal"${id}>${title}<div class="gallery" data-viewer-group>${imgs}</div></section>`;
+    })
+    .join('');
+  return `${top(d, ctx, blocks.length ? intro : '')}${html}`;
+}
